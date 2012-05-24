@@ -57,7 +57,7 @@ int queue_slot[1<<10];
 #define unlikely(x) __builtin_expect((x),0)
 
 
-static inline void
+inline void
 spsc_init(struct queue_header *that, unsigned long s)
 {
     that->producer.index  = 0;
@@ -67,9 +67,8 @@ spsc_init(struct queue_header *that, unsigned long s)
     that->size_mask = (s-1);
 }
 
-/* producer */
 
-static inline
+inline
 int spsc_write_index(struct queue_header *q)
 {
     auto size = (q->consumer.index - q->producer.index + q->size_mask) & q->size_mask;
@@ -80,7 +79,7 @@ int spsc_write_index(struct queue_header *q)
 }
 
 
-static inline
+inline
 void spsc_write_commit(struct queue_header *q)
 {
     wmb();
@@ -92,7 +91,7 @@ void spsc_write_commit(struct queue_header *q)
 }
 
 
-static inline
+inline
 int spsc_read_index(struct queue_header *q)
 {   
     auto size = (q->producer.index - q->consumer.index + q->size) & q->size_mask;
@@ -103,7 +102,7 @@ int spsc_read_index(struct queue_header *q)
 }
 
 
-static inline
+inline
 void spsc_read_commit(struct queue_header *q)
 {
     wmb();
@@ -115,7 +114,7 @@ void spsc_read_commit(struct queue_header *q)
 }
 
 
-static inline void 
+inline void 
 set_affinity(std::thread &t, int n) 
 {
     if(t.get_id() == std::thread::id())
@@ -130,7 +129,8 @@ set_affinity(std::thread &t, int n)
 }
 
 
-unsigned int hardware_concurrency()
+unsigned int 
+hardware_concurrency()
 {
     auto proc = []() {
         std::ifstream cpuinfo("/proc/cpuinfo");
