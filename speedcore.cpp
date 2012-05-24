@@ -60,14 +60,21 @@ unsigned int hardware_concurrency()
 
 std::atomic_long p_pipe;
 std::atomic_long c_pipe;
+
 std::atomic_bool barrier;
+
+const char * const BOLD  = "\E[1m";
+const char * const RESET = "\E[0m";
 
 int
 main(int argc, char *argv[])
 {
-    const size_t core = hardware_concurrency();
+    const size_t core  = hardware_concurrency();
+    const size_t trans = 10000000;
 
-    std::vector<double> elapsed(core*core, std::numeric_limits<double>::max());
+    std::vector<double> TS(core*core);
+
+    std::cout << "SpeedCore:" << std::endl;
 
     for(size_t i = 0; i < (core-1); i++)
     {
@@ -75,23 +82,23 @@ main(int argc, char *argv[])
         {
             int n = i*core+j;
 
-            std::cout << "\rSpeedCore " << "/-\\|"[n&3] << std::flush;
+            std::cout << "\rRunning test " << (i+1) << "/" << core << " " << "/-\\|"[n&3] << std::flush;
 
             p_pipe.store(0);
             c_pipe.store(0);
             barrier.store(true);
 
-            std::thread c ([] {
+            std::thread c ([&] {
                 while (barrier.load()) {}
-                for(long i = 1; i < 10000000; i++)
+                for(unsigned int i = 1; i < trans; i++)
                 {
                     p_pipe.store(i);
                     while (c_pipe.load() != i)
                     {}
                 }});
 
-            std::thread p ([] {
-                for(long i = 1; i < 10000000; i++)
+            std::thread p ([&] {
+                for(unsigned int i = 1; i < trans; i++)
                 {
                     while(p_pipe.load() != i)
                     {}
@@ -109,18 +116,23 @@ main(int argc, char *argv[])
             
             auto end = std::chrono::system_clock::now();
 
-            elapsed[n] = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+            TS[n] = static_cast<uint64_t>(trans)*1000/std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
         }
     }
 
-    auto min_ = * std::min_element(elapsed.begin(), elapsed.end());
-    for(auto &elem : elapsed)
+    auto it = std::max_element(TS.begin(), TS.end());
+    auto max_ = *it;
+
+    for(auto &elem : TS)
     {
-        if (elem != std::numeric_limits<double>::max())
-            elem /= min_;
+        elem /= max_;
     }
 
-    std::cout << std::endl << "*\t";
+    std::cout << "\nMax speed " << (max_*2) << " T/S (core " << 
+                    std::distance(TS.begin(), it)/core << " <-> " << 
+                    std::distance(TS.begin(), it)%core << ")" << std::endl;
+
+    std::cout << "*\t";
     for(size_t i = 0; i < core; i++) {
         std::cout << i << '\t';
     }
@@ -130,9 +142,12 @@ main(int argc, char *argv[])
         std::cout << i  << '\t';
         for(size_t j = 0; j < core; j++)
         {
-            auto & elem = elapsed[i * core + j];
-            if (elem != std::numeric_limits<double>::max())
-                std::cout << std::ceil(elem*100)/100 << '\t';
+            auto & elem = TS[i * core + j];
+            if (elem != 0.0) {
+                if (elem >  0.96)
+                    std::cout << BOLD;
+                std::cout << std::ceil(elem*100)/100 << RESET << '\t';
+            }
             else
                 std::cout << "-\t";
 
