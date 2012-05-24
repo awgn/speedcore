@@ -60,6 +60,7 @@ unsigned int hardware_concurrency()
 
 std::atomic_long p_pipe;
 std::atomic_long c_pipe;
+std::atomic_bool barrier;
 
 int
 main(int argc, char *argv[])
@@ -72,14 +73,16 @@ main(int argc, char *argv[])
     {
         for(size_t j = i+1; j < core; j++)
         {
-            int n = i*core +j;
+            int n = i*core+j;
 
-            std::cout << "SpeedCore " << "/-\\|"[n&3] << '\r' << std::flush;
+            std::cout << "\rSpeedCore " << "/-\\|"[n&3] << std::flush;
 
             p_pipe.store(0);
             c_pipe.store(0);
+            barrier.store(true);
 
             std::thread c ([] {
+                while (barrier.load()) {}
                 for(long i = 1; i < 10000000; i++)
                 {
                     p_pipe.store(i);
@@ -99,6 +102,7 @@ main(int argc, char *argv[])
             set_affinity(p, j);
 
             auto begin = std::chrono::system_clock::now();
+            barrier.store(false);
 
             c.join();
             p.join();
