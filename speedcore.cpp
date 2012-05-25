@@ -86,30 +86,32 @@ main(int argc, char *argv[])
 
             p_pipe.store(0);
             c_pipe.store(0);
-            barrier.store(true);
+
+            barrier.store(true, std::memory_order_release);
 
             std::thread c ([&] {
-                while (barrier.load()) {}
+                while (barrier.load(std::memory_order_acquire)) {}
                 for(unsigned int i = 1; i < trans; i++)
                 {
-                    p_pipe.store(i);
-                    while (c_pipe.load() != i)
+                    p_pipe.store(i, std::memory_order_release);
+                    while (c_pipe.load(std::memory_order_acquire) != i)
                     {}
                 }});
 
             std::thread p ([&] {
                 for(unsigned int i = 1; i < trans; i++)
                 {
-                    while(p_pipe.load() != i)
+                    while(p_pipe.load(std::memory_order_acquire) != i)
                     {}
-                    c_pipe.store(i);
+                    c_pipe.store(i,std::memory_order_release);
                 }});
 
             set_affinity(c, i);
             set_affinity(p, j);
 
             auto begin = std::chrono::system_clock::now();
-            barrier.store(false);
+            
+            barrier.store(false, std::memory_order_release);
 
             c.join();
             p.join();
