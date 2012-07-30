@@ -48,7 +48,7 @@ set_affinity(std::thread &t, int n)
 
 unsigned int hardware_concurrency()
 {
-    auto proc = []() {
+    auto proc = []() -> int {
         std::ifstream cpuinfo("/proc/cpuinfo");
         return std::count(std::istream_iterator<std::string>(cpuinfo),
                           std::istream_iterator<std::string>(),
@@ -67,7 +67,7 @@ const char * const BOLD  = "\E[1m";
 const char * const RESET = "\E[0m";
 
 int
-main(int argc, char *argv[])
+main(int, char *[])
 {
     const size_t core  = hardware_concurrency();
     const size_t trans = 10000000;
