@@ -55,8 +55,10 @@ unsigned int hardware_concurrency()
                           std::string("processor"));
     };
    
-    return std::thread::hardware_concurrency() ? : proc();
+    auto hc = std::thread::hardware_concurrency();
+    return hc ? hc : proc();
 }
+
 
 std::atomic_long p_pipe;
 std::atomic_long c_pipe;
@@ -66,6 +68,7 @@ std::atomic_bool barrier;
 const char * const BOLD  = "\E[1m";
 const char * const RESET = "\E[0m";
 
+
 int
 main(int, char *[])
 {
@@ -74,7 +77,7 @@ main(int, char *[])
 
     std::vector<double> TS(core*core);
 
-    std::cout << "SpeedCore:" << std::endl;
+    std::cout << "SpeedCore: running..." << std::endl;
 
     for(size_t i = 0; i < (core-1); i++)
     {
@@ -89,8 +92,11 @@ main(int, char *[])
 
             barrier.store(true, std::memory_order_release);
 
-            std::thread c ([&] {
-                while (barrier.load(std::memory_order_acquire)) {}
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+            std::thread c ([] {
+                while (barrier.load(std::memory_order_acquire)) 
+                {}
                 for(unsigned int i = 1; i < trans; i++)
                 {
                     p_pipe.store(i, std::memory_order_release);
@@ -98,7 +104,7 @@ main(int, char *[])
                     {}
                 }});
 
-            std::thread p ([&] {
+            std::thread p ([] {
                 for(unsigned int i = 1; i < trans; i++)
                 {
                     while(p_pipe.load(std::memory_order_acquire) != i)
