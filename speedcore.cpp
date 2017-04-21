@@ -28,6 +28,7 @@
 #include <limits>
 #include <cmath>
 #include <atomic>
+#include <vector>
 
 #include <pthread.h> // pthread_setaffinity_np
 
